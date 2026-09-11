@@ -26,6 +26,7 @@ class DataGenerator:
         for i in range(self.num_events):
             event_type = random.choice(event_types)
             base_price = base_prices[event_type]
+            seats_available = random.randint(50, 1000)
             
             # Generate event data
             event_data = {
@@ -35,8 +36,12 @@ class DataGenerator:
                 'current_price': base_price,
                 'demand_level': random.uniform(0.1, 1.0),
                 'time_to_event': random.randint(1, 365),
-                'seats_available': random.randint(50, 1000),
-                'seats_sold': random.randint(0, 500),
+                'seats_available': seats_available,
+                # Drawn independently, seats_sold could exceed seats_available:
+                # about 21% of rows sold more tickets than the venue had, by up
+                # to 10x. Downstream that ratio feeds the RL state bin and the
+                # inventory-pressure reward, both of which assume it is <= 1.
+                'seats_sold': random.randint(0, min(500, seats_available)),
                 'competitor_price': base_price * random.uniform(0.8, 1.2),
                 'season_factor': random.uniform(0.8, 1.2),
                 'day_of_week': random.randint(0, 6),
