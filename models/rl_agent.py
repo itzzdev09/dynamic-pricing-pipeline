@@ -20,17 +20,29 @@ class QLearningAgent:
         
         return f"{event_data['event_type']}_{demand_bin}_{time_bin}_{seats_bin}"
     
+    # multipliers[2] is 1.0: hold the current price.
+    PRICE_MULTIPLIERS = [0.8, 0.9, 1.0, 1.1, 1.2]  # Decrease, slight decrease, maintain, increase, big increase
+    NEUTRAL_ACTION = 2
+
     def get_action(self, state_key, training=True):
         """Select action using epsilon-greedy policy"""
         if training and np.random.random() < self.epsilon:
-            return np.random.randint(0, 5)  # Random action
-        else:
-            return np.argmax(self.q_table[state_key])  # Best action
+            return int(np.random.randint(0, 5))  # Random action
+
+        # An unseen state has an all-zero row, and argmax breaks that tie by
+        # returning index 0 -- a 20% discount. Every state the agent had not
+        # trained on was therefore priced down by a fifth. Hold price instead.
+        # Reading self.q_table[state_key] would also insert the row, so the
+        # table grew on every inference call and save_model persisted the
+        # empty states; membership is checked without touching the defaultdict.
+        if state_key not in self.q_table:
+            return self.NEUTRAL_ACTION
+
+        return int(np.argmax(self.q_table[state_key]))
     
     def get_price_multiplier(self, action):
         """Convert action to price multiplier"""
-        multipliers = [0.8, 0.9, 1.0, 1.1, 1.2]  # Decrease, slight decrease, maintain, increase, big increase
-        return multipliers[action]
+        return self.PRICE_MULTIPLIERS[action]
     
     def update_q_table(self, state, action, reward, next_state):
         """Update Q-table using Q-learning update rule"""
